@@ -1,41 +1,52 @@
-const hre = require("hardhat");
-const fs = require("fs");
-const path = require("path");
-
-const CONTRACTS_FILE = path.join(__dirname, "../database/contracts.json");
+const { ethers } = require("hardhat");
+require("dotenv").config();
+const { saveDeployedContract } = require("../utils/saveContract");
 
 async function main() {
-    const [deployer] = await hre.ethers.getSigners();
-    console.log("Deploying contract with account:", deployer.address);
+    const [deployer] = await ethers.getSigners();
+    const balance = await ethers.provider.getBalance(deployer.address);
 
-    const SmartWill = await hre.ethers.getContractFactory("SmartWill");
-    const contract = await SmartWill.deploy(
-        "0x0Db16194f9906d62f7C3953A3E46C5AB47bcF1e5", // Наследник (поменяй при деплое!)
-        hre.ethers.parseEther("0.01"), // Сумма выплат
-        30 * 24 * 60 * 60, // Частота переводов (30 дней)
-        60 * 24 * 60 * 60, // Период ожидания (60 дней)
-        { value: hre.ethers.parseEther("0.01") } // Начальный депозит
+    console.log("👤 Деплой от:", deployer.address);
+    console.log("💸 Баланс:", ethers.formatEther(balance), "ETH");
+
+    // Шаг 1: Деплой фабрики
+    console.log("🚀 Деплоим SmartWillFactory...");
+    const Factory = await ethers.getContractFactory("SmartWillFactory");
+    const factory = await Factory.deploy();
+    await factory.waitForDeployment();
+    const factoryAddress = await factory.getAddress();
+    console.log("✅ Фабрика развернута по адресу:", factoryAddress);
+    saveDeployedContract(factoryAddress, "SmartWillFactory");
+
+    // Шаг 2: Создание SmartWill через фабрику
+    const heir = "0x0Db16194f9906d62f7C3953A3E46C5AB47bcF1e5"; // 🔁 Замените на настоящий адрес наследника
+    const transferAmount = ethers.parseEther("0.0001");
+    const transferFrequency = 60 * 3; // 5 минут
+    const waitingPeriod = 60 * 5; // 15 минут
+    const deposit = ethers.parseEther("0.005");
+
+    console.log("📤 Отправка транзакции на создание SmartWill...");
+    const tx = await factory.createSmartWill(
+        heir,
+        transferAmount,
+        transferFrequency,
+        waitingPeriod,
+        { value: deposit }
     );
 
-    await contract.waitForDeployment();
-    const contractAddress = await contract.getAddress();
-    console.log("✅ SmartWill deployed at:", contractAddress);
+    const receipt = await tx.wait();
+    const event = receipt.logs.find(log => log.fragment?.name === "WillCreated");
 
-    saveContractAddress(contractAddress);
-}
-
-function saveContractAddress(contractAddress) {
-    let contracts = [];
-    if (fs.existsSync(CONTRACTS_FILE)) {
-        contracts = JSON.parse(fs.readFileSync(CONTRACTS_FILE, "utf8"));
+    if (event) {
+        const willAddress = event.args.willAddress;
+        console.log("✅ Новый SmartWill создан по адресу:", willAddress);
+        saveDeployedContract(willAddress, "SmartWill");
+    } else {
+        console.error("⚠️ Не удалось получить адрес контракта из события");
     }
-    contracts.push({ contract_id: contractAddress });
-
-    fs.writeFileSync(CONTRACTS_FILE, JSON.stringify(contracts, null, 2));
-    console.log("✅ Контракт сохранён в database/contracts.json");
 }
 
 main().catch((error) => {
-    console.error(error);
+    console.error("❌ Ошибка деплоя:", error);
     process.exit(1);
 });
