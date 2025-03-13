@@ -4,45 +4,48 @@ pragma solidity ^0.8.20;
 contract SmartWill {
     address public owner;
     address public heir;
-    uint public transferAmount;
-    uint public transferFrequency;
-    uint public willActivateWaitingPeriod;
-    uint public lastPing;
-    uint public createdAt; // ✅ Дата создания контракта
+    uint256 public transferAmount;
+    uint256 public transferFrequency;
+    uint256 public willActivateWaitingPeriod;
+    uint256 public lastPing;
+    uint256 public createdAt;
 
-    event PingSent(address indexed owner, uint timestamp);
-    event FundsTransferred(address indexed heir, uint amount, uint timestamp);
+    event PingSent(address indexed owner, uint256 timestamp);
+    event FundsTransferred(address indexed heir, uint256 amount, uint256 timestamp);
 
     constructor(
         address _heir,
-        uint _transferAmount,
-        uint _transferFrequency,
-        uint _willActivateWaitingPeriod
+        uint256 _transferAmount,
+        uint256 _transferFrequency,
+        uint256 _willActivateWaitingPeriod
     ) payable {
-        require(msg.value >= _transferAmount, "Insufficient initial balance");
+        require(msg.value >= _transferAmount, "Not enough ETH to fund the will");
+
         owner = msg.sender;
         heir = _heir;
         transferAmount = _transferAmount;
-        transferFrequency = _transferFrequency * 1 minutes;
-        willActivateWaitingPeriod = _willActivateWaitingPeriod * 1 minutes;
+        transferFrequency = _transferFrequency;
+        willActivateWaitingPeriod = _willActivateWaitingPeriod;
         lastPing = block.timestamp;
-        createdAt = block.timestamp; // ✅ Фиксируем дату деплоя
+        createdAt = block.timestamp;
     }
 
-    function ping() public {
-        require(msg.sender == owner, "Only owner can ping");
+    function ping() external {
+        require(msg.sender == owner, "Only the owner can send a ping");
         lastPing = block.timestamp;
-        emit PingSent(owner, lastPing);
+        emit PingSent(owner, block.timestamp);
     }
 
-    function checkAndTransfer() public {
-        require(block.timestamp >= lastPing + willActivateWaitingPeriod, "Will not activated yet");
-        require(address(this).balance >= transferAmount, "Insufficient balance");
+    function checkAndTransfer() external {
+        require(block.timestamp > lastPing + willActivateWaitingPeriod, "Will is still active");
+        require(address(this).balance >= transferAmount, "Not enough balance");
 
-        lastPing = block.timestamp;
         payable(heir).transfer(transferAmount);
+        lastPing = block.timestamp; // Reset to avoid sending everything at once
         emit FundsTransferred(heir, transferAmount, block.timestamp);
     }
 
-    receive() external payable {}
+    function getBalance() external view returns (uint256) {
+        return address(this).balance;
+    }
 }

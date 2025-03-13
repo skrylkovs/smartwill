@@ -1,33 +1,38 @@
 const hre = require("hardhat");
-const { parseEther } = hre.ethers;
-const { saveContractAddress } = require("./utils");
+const fs = require("fs");
+const path = require("path");
+
+const CONTRACTS_FILE = path.join(__dirname, "../database/contracts.json");
 
 async function main() {
     const [deployer] = await hre.ethers.getSigners();
     console.log("Deploying contract with account:", deployer.address);
 
-    let balance = await hre.ethers.provider.getBalance(deployer.address);
-    console.log("Deployer balance before:", hre.ethers.formatEther(balance), "ETH");
-
     const SmartWill = await hre.ethers.getContractFactory("SmartWill");
     const contract = await SmartWill.deploy(
-        "0x0Db16194f9906d62f7C3953A3E46C5AB47bcF1e5", // Адрес наследника
-        parseEther("0.000001"),
-        1, // Частота выплат (1 минута)
-        3, // Период ожидания (3 минуты)
-        { value: parseEther("0.000005") } // Депозит (переводится от создателя контракта на адрес контракта)
+        "0x0Db16194f9906d62f7C3953A3E46C5AB47bcF1e5", // Наследник (поменяй при деплое!)
+        hre.ethers.parseEther("0.01"), // Сумма выплат
+        30 * 24 * 60 * 60, // Частота переводов (30 дней)
+        60 * 24 * 60 * 60, // Период ожидания (60 дней)
+        { value: hre.ethers.parseEther("0.01") } // Начальный депозит
     );
 
     await contract.waitForDeployment();
     const contractAddress = await contract.getAddress();
     console.log("✅ SmartWill deployed at:", contractAddress);
 
-    // Обновляем баланс после деплоя
-    balance = await hre.ethers.provider.getBalance(deployer.address);
-    console.log("Deployer balance after:", hre.ethers.formatEther(balance), "ETH");
-
-    // ✅ Сохраняем контракт в database/contracts.json через utils.js
     saveContractAddress(contractAddress);
+}
+
+function saveContractAddress(contractAddress) {
+    let contracts = [];
+    if (fs.existsSync(CONTRACTS_FILE)) {
+        contracts = JSON.parse(fs.readFileSync(CONTRACTS_FILE, "utf8"));
+    }
+    contracts.push({ contract_id: contractAddress });
+
+    fs.writeFileSync(CONTRACTS_FILE, JSON.stringify(contracts, null, 2));
+    console.log("✅ Контракт сохранён в database/contracts.json");
 }
 
 main().catch((error) => {
