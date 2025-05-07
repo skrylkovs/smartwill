@@ -7,10 +7,8 @@ contract SmartWill {
     uint256 public transferAmount;
     uint256 public transferFrequency;
     uint256 public willActivateWaitingPeriod;
-    uint256 public lastPing;
     uint256 public createdAt;
 
-    event PingSent(address indexed owner, uint256 timestamp);
     event FundsTransferred(address indexed heir, uint256 amount, uint256 timestamp);
 
     constructor(
@@ -26,23 +24,18 @@ contract SmartWill {
         transferAmount = _transferAmount;
         transferFrequency = _transferFrequency;
         willActivateWaitingPeriod = _willActivateWaitingPeriod;
-        lastPing = block.timestamp;
         createdAt = block.timestamp;
     }
 
-    function ping() external {
-        require(msg.sender == owner, "Only the owner can send a ping");
-        lastPing = block.timestamp;
-        emit PingSent(owner, block.timestamp);
-    }
-
-    function checkAndTransfer() external {
-        require(block.timestamp > lastPing + willActivateWaitingPeriod, "Will is still active");
+    // Функция для перевода средств наследнику
+    // Теперь вызывается только из фабрики через checkAndTransfer
+    function transferToHeir() external returns (bool) {
         require(address(this).balance >= transferAmount, "Not enough balance");
-
+        
+        // Переводим средства наследнику
         payable(heir).transfer(transferAmount);
-        lastPing = block.timestamp; // Reset to avoid sending everything at once
         emit FundsTransferred(heir, transferAmount, block.timestamp);
+        return true;
     }
 
     function getBalance() external view returns (uint256) {
