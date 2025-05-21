@@ -6,7 +6,7 @@ module.exports = {
   networks: {
     sepolia: {
       url: "https://sepolia-rollup.arbitrum.io/rpc",
-      accounts: ["188847531e78255ea5ac9c27df97af99715a63a86b95e3dfa74b4925a4fdf93d"]
+      accounts: ["2b56ce53f71b7614a715790088558cc36cef0bdcbe823da48d16c02be831ce30"]
     }
   }
 };
