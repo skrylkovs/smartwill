@@ -14,15 +14,21 @@ contract SmartWillFactory {
 
     function createSmartWill(
         address heir,
+        string memory heirName,
+        string memory heirRole,
         uint256 transferAmount,
         uint256 transferFrequency,
-        uint256 willActivateWaitingPeriod
+        uint256 willActivateWaitingPeriod,
+        uint256 limit
     ) external payable {
         SmartWill newWill = new SmartWill{value: msg.value}(
             heir,
+            heirName,
+            heirRole,
             transferAmount,
             transferFrequency,
-            willActivateWaitingPeriod
+            willActivateWaitingPeriod,
+            limit
         );
         
         address willAddress = address(newWill);
