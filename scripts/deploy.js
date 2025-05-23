@@ -20,18 +20,23 @@ async function main() {
 
     // Шаг 2: Создание SmartWill через фабрику
     const heir = "0x0Db16194f9906d62f7C3953A3E46C5AB47bcF1e5"; // 🔁 Замените на настоящий адрес наследника
+    const heirName = "Иванов Иван Иванович"; // 🔁 Замените на ФИО наследника
+    const heirRole = "Сын"; // 🔁 Замените на роль наследника
     const transferAmount = ethers.parseEther("0.0001");
-    const transferFrequency = 60 * 3; // 5 минут
-    const waitingPeriod = 60 * 5; // 15 минут
-    const deposit = ethers.parseEther("0.005");
+    const transferFrequency = 60 * 3; // 3 минуты
+    const waitingPeriod = 60 * 5; // 5 минут
+    const limit = ethers.parseEther("0.005");
 
     console.log("📤 Отправка транзакции на создание SmartWill...");
     const tx = await factory.createSmartWill(
         heir,
+        heirName,
+        heirRole,
         transferAmount,
         transferFrequency,
         waitingPeriod,
-        { value: deposit }
+        limit,
+        { value: limit }
     );
 
     const receipt = await tx.wait();

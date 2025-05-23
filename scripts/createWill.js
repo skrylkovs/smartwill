@@ -3,7 +3,7 @@ require("dotenv").config();
 const { saveDeployedContract } = require("../utils/saveContract");
 
 // Константа - адрес SmartWillFactory
-const FACTORY_ADDRESS = "0x2E8D7D43AC61d151Df374ee85d3Ad99fa510B709";
+const FACTORY_ADDRESS = "0xecd3348A4889021364B91528241FB676119d8A6A";
 
 async function main() {
     const [deployer] = await ethers.getSigners();
@@ -19,18 +19,23 @@ async function main() {
 
     // Параметры для создания SmartWill
     const heir = "0x0Db16194f9906d62f7C3953A3E46C5AB47bcF1e5"; // 🔁 Замените на настоящий адрес наследника
+    const heirName = "Иванов Иван Иванович"; // 🔁 Замените на ФИО наследника
+    const heirRole = "Сын"; // 🔁 Замените на роль наследника
     const transferAmount = ethers.parseEther("0.0001");
     const transferFrequency = 60 * 3; // 3 минуты
     const waitingPeriod = 60 * 5; // 5 минут
-    const deposit = ethers.parseEther("0.005");
+    const limit = ethers.parseEther("0.005");
 
     console.log("📤 Отправка транзакции на создание SmartWill...");
     const tx = await factory.createSmartWill(
         heir,
+        heirName,
+        heirRole,
         transferAmount,
         transferFrequency,
         waitingPeriod,
-        { value: deposit }
+        limit,
+        { value: limit }
     );
 
     console.log("⏳ Ожидаем подтверждения транзакции...");
