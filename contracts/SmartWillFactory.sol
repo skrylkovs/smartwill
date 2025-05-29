@@ -8,6 +8,12 @@ contract SmartWillFactory {
     
     // Отображение адреса пользователя на время его последнего пинга
     mapping(address => uint256) public lastPings;
+    
+    // Отображение владельца на массив его завещаний
+    mapping(address => address[]) public ownerToWills;
+    
+    // Отображение адреса завещания на владельца
+    mapping(address => address) public willToOwner;
 
     event WillCreated(address indexed willAddress, address indexed owner);
     event PingSent(address indexed owner, uint256 timestamp);
@@ -34,6 +40,10 @@ contract SmartWillFactory {
         address willAddress = address(newWill);
         deployedWills.push(willAddress);
         
+        // Записываем связь владельца с завещанием
+        ownerToWills[msg.sender].push(willAddress);
+        willToOwner[willAddress] = msg.sender;
+        
         // Инициализируем lastPing для отправителя, если это его первое завещание
         if (lastPings[msg.sender] == 0) {
             lastPings[msg.sender] = block.timestamp;
@@ -44,6 +54,39 @@ contract SmartWillFactory {
 
     function getDeployedWills() external view returns (address[] memory) {
         return deployedWills;
+    }
+    
+    // Безопасный метод для получения завещаний текущего пользователя
+    function getMyWills() external view returns (address[] memory) {
+        return ownerToWills[msg.sender];
+    }
+    
+    // Метод для получения завещаний конкретного владельца (только для владельца)
+    function getWillsOf(address owner) external view returns (address[] memory) {
+        require(msg.sender == owner, "You can only view your own wills");
+        return ownerToWills[owner];
+    }
+    
+    // Проверка, является ли пользователь владельцем завещания
+    function isWillOwner(address willAddress, address user) external view returns (bool) {
+        return willToOwner[willAddress] == user;
+    }
+    
+    // Получение владельца завещания (только для самого владельца или наследника)
+    function getWillOwner(address willAddress) external view returns (address) {
+        address owner = willToOwner[willAddress];
+        
+        // Проверяем, что запрашивающий либо владелец, либо наследник завещания
+        if (msg.sender == owner) {
+            return owner;
+        }
+        
+        // Проверяем, является ли запрашивающий наследником
+        SmartWill will = SmartWill(willAddress);
+        address heir = will.heir();
+        require(msg.sender == heir, "Only owner or heir can view will owner");
+        
+        return owner;
     }
     
     // Метод для отправки ping от пользователя
