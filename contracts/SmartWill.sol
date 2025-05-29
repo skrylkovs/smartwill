@@ -11,6 +11,7 @@ contract SmartWill {
     uint256 public willActivateWaitingPeriod;
     uint256 public createdAt;
     uint256 public limit;
+    uint256 public lastTransferTime;
 
     event FundsTransferred(address indexed heir, uint256 amount, uint256 timestamp);
 
@@ -26,7 +27,7 @@ contract SmartWill {
         require(msg.value >= _limit, "Not enough ETH to fund the will");
         require(_limit >= _transferAmount, "Limit must be greater than or equal to transfer amount");
 
-        owner = msg.sender;
+        owner = tx.origin;
         heir = _heir;
         heirName = _heirName;
         heirRole = _heirRole;
@@ -35,20 +36,44 @@ contract SmartWill {
         willActivateWaitingPeriod = _willActivateWaitingPeriod;
         limit = _limit;
         createdAt = block.timestamp;
+        lastTransferTime = 0;
     }
 
     // Функция для перевода средств наследнику
-    // Теперь вызывается только из фабрики через checkAndTransfer
+    // Теперь с проверкой частоты переводов
     function transferToHeir() external returns (bool) {
         require(address(this).balance >= transferAmount, "Not enough balance");
         
-        // Переводим средства наследнику
+        if (lastTransferTime > 0) {
+            require(
+                block.timestamp >= lastTransferTime + transferFrequency, 
+                "Transfer frequency limit not reached yet"
+            );
+        }
+        
         payable(heir).transfer(transferAmount);
+        
+        lastTransferTime = block.timestamp;
+        
         emit FundsTransferred(heir, transferAmount, block.timestamp);
         return true;
     }
 
     function getBalance() external view returns (uint256) {
         return address(this).balance;
+    }
+    
+    function getNextTransferTime() external view returns (uint256) {
+        if (lastTransferTime == 0) {
+            return 0;
+        }
+        return lastTransferTime + transferFrequency;
+    }
+    
+    function canTransferNow() external view returns (bool) {
+        if (lastTransferTime == 0) {
+            return true;
+        }
+        return block.timestamp >= lastTransferTime + transferFrequency;
     }
 }
