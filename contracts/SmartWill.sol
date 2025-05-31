@@ -12,8 +12,10 @@ contract SmartWill {
     uint256 public createdAt;
     uint256 public limit;
     uint256 public lastTransferTime;
+    uint256 public lastActivity;
 
     event FundsTransferred(address indexed heir, uint256 amount, uint256 timestamp);
+    event ActivityConfirmed(address indexed owner, uint256 timestamp);
 
     constructor(
         address _heir,
@@ -37,12 +39,22 @@ contract SmartWill {
         limit = _limit;
         createdAt = block.timestamp;
         lastTransferTime = 0;
+        lastActivity = block.timestamp;
     }
 
-    // Функция для перевода средств наследнику
-    // Теперь с проверкой частоты переводов
+    function confirmActivity() external {
+        require(msg.sender == owner, "Only owner can confirm activity");
+        lastActivity = block.timestamp;
+        emit ActivityConfirmed(owner, block.timestamp);
+    }
+
     function transferToHeir() external returns (bool) {
         require(address(this).balance >= transferAmount, "Not enough balance");
+        
+        require(
+            block.timestamp >= lastActivity + willActivateWaitingPeriod,
+            "Owner is still active. Cannot transfer yet."
+        );
         
         if (lastTransferTime > 0) {
             require(
@@ -71,9 +83,20 @@ contract SmartWill {
     }
     
     function canTransferNow() external view returns (bool) {
-        if (lastTransferTime == 0) {
-            return true;
-        }
-        return block.timestamp >= lastTransferTime + transferFrequency;
+        bool ownerInactive = block.timestamp >= lastActivity + willActivateWaitingPeriod;
+        bool frequencyPassed = (lastTransferTime == 0) || (block.timestamp >= lastTransferTime + transferFrequency);
+        
+        return ownerInactive && frequencyPassed;
+    }
+    
+    function isOwnerActive() external view returns (bool) {
+        return block.timestamp < lastActivity + willActivateWaitingPeriod;
+    }
+    
+    function getNextPossibleTransferTime() external view returns (uint256) {
+        uint256 activityExpiry = lastActivity + willActivateWaitingPeriod;
+        uint256 nextTransferTime = (lastTransferTime == 0) ? 0 : lastTransferTime + transferFrequency;
+        
+        return (activityExpiry > nextTransferTime) ? activityExpiry : nextTransferTime;
     }
 }
