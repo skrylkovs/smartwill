@@ -5,35 +5,35 @@ const { getContractAddress } = require("./utils");
 
 async function main() {
     const contractAddress = getContractAddress();
-    console.log(`🔹 Читаем события контракта: ${contractAddress}`);
+    console.log(`🔹 Reading contract events: ${contractAddress}`);
 
     const SmartWill = await ethers.getContractFactory("SmartWill");
     const contract = SmartWill.attach(contractAddress);
 
-    // Получаем и выводим события PING
-    await printEventLogs(contract, "PingSent", "📜 История PING", event =>
-        `🟢 Владелец: ${event.args.owner} | Дата: ${formatTimestamp(event.args.timestamp)}`
+    // Get and display PING events
+    await printEventLogs(contract, "PingSent", "📜 PING History", event =>
+        `🟢 Owner: ${event.args.owner} | Date: ${formatTimestamp(event.args.timestamp)}`
     );
 
-    // Получаем и выводим события перевода средств
-    await printEventLogs(contract, "FundsTransferred", "💸 История переводов", event =>
-        `💰 Наследник: ${event.args.heir} | Сумма: ${formatEther(event.args.amount)} ETH | Дата: ${formatTimestamp(event.args.timestamp)}`
+    // Get and display fund transfer events
+    await printEventLogs(contract, "FundsTransferred", "💸 Transfer History", event =>
+        `💰 Heir: ${event.args.heir} | Amount: ${formatEther(event.args.amount)} ETH | Date: ${formatTimestamp(event.args.timestamp)}`
     );
 }
 
-// Функция для форматирования даты из BigInt в строку
+// Function to format date from BigInt to string
 function formatTimestamp(timestamp) {
     return new Date(Number(timestamp) * 1000).toLocaleString();
 }
 
-// Универсальная функция для получения и вывода логов событий
+// Universal function to get and display event logs
 async function printEventLogs(contract, eventName, title, formatFn) {
     const filter = contract.filters[eventName]();
     const events = await contract.queryFilter(filter);
 
     console.log(`\n${title}:`);
     if (events.length === 0) {
-        console.log("🚫 Нет событий.");
+        console.log("🚫 No events.");
         return;
     }
 
